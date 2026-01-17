@@ -1,6 +1,8 @@
 import express from 'express';
 import { saveCall, getRules, createAlerts, createRule, getAlerts, updateRule } from './database.js';
 
+const idempotencyStore = {};
+
 const PORT = process.env.PORT || 3000;
 const app = express();
 app.use(express.json());
@@ -14,6 +16,12 @@ app.get('/', (req, res) => {
 
 app.post('/calls', (req, res) => {
   const { timestamp, phone, location, transcript } = req.body;
+  const idempotencyKey = req.headers['idempotency-key'];
+
+  if (idempotencyKey && idempotencyStore[idempotencyKey]) {
+    console.log(`Duplicate request detected for key: ${idempotencyKey}`);
+    return res.status(200).json(idempotencyStore[idempotencyKey]);
+  }
 
   if (!timestamp || !phone || !location || !transcript) {
     return res.status(400).json({ error: 'Missing required call fields' });
@@ -44,10 +52,13 @@ app.post('/calls', (req, res) => {
       alerts = createAlerts(matchesFound);
     }
 
-    return res.status(201).json({
-      call,
-      alerts
-    });
+    const result = { call, alerts };
+
+    if (idempotencyKey) {
+      idempotencyStore[idempotencyKey] = result;
+    }
+
+    return res.status(201).json(result);
 
   } catch (error) {
     console.error('Failed to process call:', error);
@@ -117,7 +128,7 @@ app.patch('/rules/:id', (req, res) => {
   const updates = req.body;
     
   const hasUpdates = Object.keys(updates).length > 0;
-  
+
   if (!hasUpdates) {
     return res.status(400).json({ error: 'No update fields provided' });
   }
