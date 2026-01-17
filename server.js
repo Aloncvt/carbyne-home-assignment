@@ -1,5 +1,5 @@
 import express from 'express';
-import { saveCall, getRules, createAlerts, createRule, getAlerts } from './database.js';
+import { saveCall, getRules, createAlerts, createRule, getAlerts, updateRule } from './database.js';
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -88,7 +88,7 @@ app.post('/rules', (req, res) => {
 
 app.get('/rules', (req, res) => {
   try {
-    
+
     const onlyEnabled = req.query.enabled === 'true';
     const rules = getRules(onlyEnabled);
 
@@ -108,6 +108,30 @@ app.get('/alerts', (req, res) => {
     return res.status(200).json(alerts);
   } catch (error) {
     console.error('Error fetching alerts:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.patch('/rules/:id', (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+    
+  const hasUpdates = Object.keys(updates).length > 0;
+  
+  if (!hasUpdates) {
+    return res.status(400).json({ error: 'No update fields provided' });
+  }
+
+  try {
+    const updatedRule = updateRule(id, updates);
+
+    if (!updatedRule) {
+      return res.status(404).json({ error: 'Rule not found' });
+    }
+
+    return res.status(200).json(updatedRule);
+  } catch (error) {
+    console.error('Failed to update rule:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
