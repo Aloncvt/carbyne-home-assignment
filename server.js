@@ -1,9 +1,119 @@
 import express from 'express';
+import { saveCall, getRules, createAlerts, createRule, getAlerts } from './database.js';
 
 const PORT = process.env.PORT || 3000;
+const app = express();
+app.use(express.json());
+
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'server is up and running!' 
+  });
+});
+
+app.post('/calls', (req, res) => {
+  const { timestamp, phone, location, transcript } = req.body;
+
+  if (!timestamp || !phone || !location || !transcript) {
+    return res.status(400).json({ error: 'Missing required call fields' });
+  }
+
+  try {
+    const call = saveCall({ timestamp, phone, location, transcript });
+
+    const enabledRules = getRules(true);
+    const matchesFound = [];
+
+    for (const rule of enabledRules) {
+      const matchedKeywords = rule.keywords.filter(kw => 
+        transcript.toLowerCase().includes(kw.toLowerCase())
+      );
+
+      if (matchedKeywords.length > 0) {
+        matchesFound.push({
+          ruleId: rule.id,
+          callId: call.id,
+          matchedKeywords
+        });
+      }
+    }
+
+    let alerts = [];
+    if (matchesFound.length > 0) {
+      alerts = createAlerts(matchesFound);
+    }
+
+    return res.status(201).json({
+      call,
+      alerts
+    });
+
+  } catch (error) {
+    console.error('Failed to process call:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/rules', (req, res) => {
+  const { name, keywords, enabled } = req.body;
+
+  if (!name || !Array.isArray(keywords) || keywords.length === 0) {
+    return res.status(400).json({ error: 'Missing required rules fields' });
+  }
+
+  try {
+    const hasInvalidKeyword = keywords.some(keyword => {
+      if (typeof keyword !== 'string') {
+        return true;
+      }
+      return keyword.trim() === '';
+    });
+
+    if (hasInvalidKeyword) {
+      return res
+        .status(400)
+        .json({ error: 'Keywords cannot be empty and must be strings' });
+    }
+
+    const rule = createRule({ name, keywords, enabled });
+
+    return res.status(201).json(rule);
+
+  } catch (error) {
+    console.error('Failed to process rule:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/rules', (req, res) => {
+  try {
+    
+    const onlyEnabled = req.query.enabled === 'true';
+    const rules = getRules(onlyEnabled);
+
+    return res.status(200).json(rules);
+  } catch (error) {
+    console.error('Error fetching rules:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/alerts', (req, res) => {
+  try {
+
+    const { ruleId, callId } = req.query;
+    const alerts = getAlerts(ruleId, callId);
+
+    return res.status(200).json(alerts);
+  } catch (error) {
+    console.error('Error fetching alerts:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 const server = app.listen(PORT, () => {
-  console.log(`✓ Server running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
 
 export default { app, server };
