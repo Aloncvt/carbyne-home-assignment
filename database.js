@@ -131,6 +131,24 @@ export function updateRule(id, updates) {
   return parseRow(updatedRow);
 }
 
+
+export function toggleRule(id) {
+  const rule = db.prepare('SELECT * FROM rules WHERE id = ?').get(id);
+  
+  if (!rule) return null;
+
+  const newStatus = rule.enabled ? 0 : 1;
+  
+  db.prepare('UPDATE rules SET enabled = ? WHERE id = ?').run(newStatus, id);
+
+  const updatedRule = db.prepare('SELECT * FROM rules WHERE id = ?').get(id);
+  return {
+    ...updatedRule,
+    keywords: JSON.parse(updatedRule.keywords),
+    enabled: Boolean(updatedRule.enabled)
+  };
+}
+
 // ============================================
 // calls & alerts
 // ============================================

@@ -1,5 +1,5 @@
 import express from 'express';
-import { saveCall, getRules, createAlerts, createRule, getAlerts, updateRule } from './database.js';
+import { saveCall, getRules, createAlerts, createRule, getAlerts, updateRule, toggleRule } from './database.js';
 
 const idempotencyStore = {};
 
@@ -147,8 +147,28 @@ app.patch('/rules/:id', (req, res) => {
   }
 });
 
+app.post('/rules/:id/toggle', (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const updatedRule = toggleRule(id);
+
+    if (!updatedRule) {
+      return res.status(404).json({ error: 'Rule not found' });
+    }
+
+    return res.status(200).json({
+      message: `Rule is now ${updatedRule.enabled ? 'enabled' : 'disabled'}`,
+      rule: updatedRule
+    });
+  } catch (error) {
+    console.error('Failed to toggle rule:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 const server = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
 
-export default { app, server };
+export { app, server };
