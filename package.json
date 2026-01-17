@@ -1,4 +1,12 @@
 {
+  "name": "rules-alerts-api",
+  "version": "1.0.0",
+  "description": "carbyne home assignment",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
     "better-sqlite3": "^12.6.2",
     "express": "^5.2.1"
