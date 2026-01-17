@@ -9,6 +9,15 @@ This project is a **Rules & Alert API** built with **Node.js**, **Express.js**, 
 > This project was created as a technical assessment for Carbyne.
 > I was tasked by Carbyne to demonstrate learning speed, code organization, and API fundamentals.
 
+## Implementation Details
+In this assignment, I implemented the following:
+
+    Core Logic: Full CRUD for rules, call ingestion, and an automated alerting engine.
+
+    Extra Credit 1 (Rule Management): implemented a PATCH endpoint to allow dynamic updates to rules and a way to toggle them on/off without deletion.
+
+    Extra Credit 2 (Idempotency): implemented Idempotency for creating calls to avoid duplicate requests.
+
 ## Installation & Setup
 
 1. **Clone the repository:**
